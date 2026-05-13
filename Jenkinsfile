@@ -49,6 +49,21 @@ pipeline {
     }
 
     // ==========================================
+    // Test AWS Credentials
+    // ==========================================
+    stage('Test AWS Access') {
+
+      when {
+        expression { env.BUILD_AMI == "true" }
+      }
+
+      steps {
+
+        sh 'aws sts get-caller-identity'
+      }
+    }
+
+    // ==========================================
     // Trigger Image Builder
     // ==========================================
     stage('Build Golden AMI') {
