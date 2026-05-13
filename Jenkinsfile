@@ -28,7 +28,7 @@ pipeline {
           def changed = sh(
             script: """
               git diff --name-only HEAD~1 HEAD |
-              grep '\\.yaml$\\|\\.yml$' || true
+              grep '^components/.*\\.yaml$\\|^components/.*\\.yml$' || true
             """,
             returnStdout: true
           ).trim()
@@ -55,9 +55,9 @@ pipeline {
 
       steps {
 
-        sh 'chmod +x build_ami.sh'
+        sh 'chmod +x scripts/build_ami.sh'
 
-        sh './build_ami.sh'
+        sh './scripts/build_ami.sh'
       }
     }
 
