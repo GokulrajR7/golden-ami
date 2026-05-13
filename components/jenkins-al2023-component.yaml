@@ -1,0 +1,81 @@
+name: jenkins-al2023-component
+description: Golden AMI component for Amazon Linux 2023
+
+schemaVersion: 1.0
+
+phases:
+
+  - name: build
+
+    steps:
+
+      - name: UpdateSystem
+        action: ExecuteBash
+        inputs:
+          commands:
+            - sudo dnf update -y
+
+      - name: InstallBasicTools
+        action: ExecuteBash
+        inputs:
+          commands:
+            - sudo dnf install -y git wget unzip tar
+
+      - name: InstallDocker
+        action: ExecuteBash
+        inputs:
+          commands:
+            - sudo dnf install -y docker
+            - sudo systemctl enable docker
+            - sudo systemctl start docker
+            - sudo usermod -aG docker ec2-user
+
+      - name: InstallJava
+        action: ExecuteBash
+        inputs:
+          commands:
+            - sudo dnf install -y java-21-amazon-corretto
+
+      - name: InstallNodeJS
+        action: ExecuteBash
+        inputs:
+          commands:
+            - sudo dnf module enable nodejs:20 -y
+            - sudo dnf install -y nodejs
+            - node -v
+            - npm -v
+
+      - name: Cleanup
+        action: ExecuteBash
+        inputs:
+          commands:
+            - sudo dnf clean all
+
+  - name: test
+
+    steps:
+
+      - name: ValidateJava
+        action: ExecuteBash
+        inputs:
+          commands:
+            - java -version
+
+      - name: ValidateDocker
+        action: ExecuteBash
+        inputs:
+          commands:
+            - docker --version
+
+      - name: ValidateGit
+        action: ExecuteBash
+        inputs:
+          commands:
+            - git --version
+
+      - name: ValidateNode
+        action: ExecuteBash
+        inputs:
+          commands:
+            - node -v
+            - npm -v
