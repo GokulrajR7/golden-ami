@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    label 'gami2023'
+    label 'al2023'
   }
 
   environment {
