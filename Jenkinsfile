@@ -26,10 +26,10 @@ pipeline {
         script {
 
           def changed = sh(
-            script: """
+            script: '''
               git diff --name-only HEAD~1 HEAD |
-              grep '^components/.*\\.yaml$\\|^components/.*\\.yml$' || true
-            """,
+              grep "^components/.*\\.yaml$\\|^components/.*\\.yml$" || true
+            ''',
             returnStdout: true
           ).trim()
 
