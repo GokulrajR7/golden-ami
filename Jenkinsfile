@@ -1,5 +1,7 @@
 pipeline {
-  agent any
+  agent {
+    label 'gami2023'
+  }
 
   environment {
     REGION = "ap-south-1"
