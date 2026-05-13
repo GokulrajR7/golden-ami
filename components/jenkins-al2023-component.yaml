@@ -36,14 +36,14 @@ phases:
           commands:
             - sudo dnf install -y java-21-amazon-corretto
 
-      - name: InstallNodeJS
-        action: ExecuteBash
-        inputs:
-          commands:
-            - sudo dnf module enable nodejs:20 -y
-            - sudo dnf install -y nodejs
-            - node -v
-            - npm -v
+      # - name: InstallNodeJS
+      #   action: ExecuteBash
+      #   inputs:
+      #     commands:
+      #       - sudo dnf module enable nodejs:20 -y
+      #       - sudo dnf install -y nodejs
+      #       - node -v
+      #       - npm -v
 
       - name: Cleanup
         action: ExecuteBash
@@ -73,9 +73,9 @@ phases:
           commands:
             - git --version
 
-      - name: ValidateNode
-        action: ExecuteBash
-        inputs:
-          commands:
-            - node -v
-            - npm -v
+      # - name: ValidateNode
+      #   action: ExecuteBash
+      #   inputs:
+      #     commands:
+      #       - node -v
+      #       - npm -v
