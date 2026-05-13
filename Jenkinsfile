@@ -27,11 +27,13 @@ pipeline {
 
           def changed = sh(
             script: '''
-              git diff --name-only HEAD~1 HEAD |
+              git diff --name-only HEAD^ HEAD |
               grep "^components/.*\\.yaml$\\|^components/.*\\.yml$" || true
             ''',
             returnStdout: true
           ).trim()
+
+          echo "Changed files: ${changed}"
 
           if (changed) {
             env.BUILD_AMI = "true"
