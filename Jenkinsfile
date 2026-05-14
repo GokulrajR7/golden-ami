@@ -1,98 +1,199 @@
 pipeline {
-  agent {
-    label 'al2023'
-  }
 
-  environment {
-    REGION = "ap-south-1"
-  }
-
-  stages {
-
-    // ==========================================
-    // Checkout Repository
-    // ==========================================
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    agent {
+        label 'al2023'
     }
 
-    // ==========================================
-    // Check YAML Changes
-    // ==========================================
-    stage('Check YAML Changes') {
+    environment {
 
-      steps {
+        REGION = "ap-south-1"
 
-        script {
+        COMPONENT_NAME = "jenkins-al2023-component"
 
-          def changed = sh(
-            script: '''
-              git diff --name-only HEAD^ HEAD |
-              grep "^components/.*\\.yaml$\\|^components/.*\\.yml$" || true
-            ''',
-            returnStdout: true
-          ).trim()
+        RECIPE_NAME = "jenkins-al2023-recipe"
 
-          echo "Changed files: ${changed}"
+        VERSION = "1.0.${BUILD_NUMBER}"
 
-          if (changed) {
-            env.BUILD_AMI = "true"
-          } else {
-            env.BUILD_AMI = "false"
-          }
+        SCRIPT_BUCKET = "golden-ami-scripts"
 
-          echo "YAML Changed: ${env.BUILD_AMI}"
+        PIPELINE_ARN = "arn:aws:imagebuilder:ap-south-1:272916400173:image-pipeline/testing-pipeline"
+
+        INFRA_ARN = "arn:aws:imagebuilder:ap-south-1:272916400173:infrastructure-configuration/onestrata-prereq-infra"
+
+        PARENT_IMAGE = "arn:aws:imagebuilder:ap-south-1:aws:image/amazon-linux-2023-arm64/2023.10.16"
+    }
+
+    stages {
+
+        // =====================================================
+        // Checkout Source
+        // =====================================================
+
+        stage('Checkout') {
+
+            steps {
+                checkout scm
+            }
         }
-      }
+
+        // =====================================================
+        // Upload Shell Script to S3
+        // =====================================================
+
+        stage('Upload Script') {
+
+            steps {
+
+                sh """
+                    aws s3 cp \
+                    imagebuilder/scripts/install.sh \
+                    s3://${SCRIPT_BUCKET}/install.sh \
+                    --region ${REGION}
+                """
+            }
+        }
+
+        // =====================================================
+        // Create Image Builder Component
+        // =====================================================
+
+        stage('Create Component') {
+
+            steps {
+
+                sh """
+                    aws imagebuilder create-component \
+                    --name ${COMPONENT_NAME} \
+                    --semantic-version ${VERSION} \
+                    --platform Linux \
+                    --data file://imagebuilder/component.yaml \
+                    --region ${REGION}
+                """
+            }
+        }
+
+        // =====================================================
+        // Fetch Latest Component ARN
+        // =====================================================
+
+        stage('Fetch Component ARN') {
+
+            steps {
+
+                script {
+
+                    env.COMPONENT_ARN = sh(
+
+                        script: """
+                            aws imagebuilder list-components \
+                            --owner Self \
+                            --region ${REGION} \
+                            --query "componentVersionList[?name=='${COMPONENT_NAME}'] | [-1].arn" \
+                            --output text
+                        """,
+
+                        returnStdout: true
+
+                    ).trim()
+
+                    echo "Component ARN: ${env.COMPONENT_ARN}"
+                }
+            }
+        }
+
+        // =====================================================
+        // Create Recipe
+        // =====================================================
+
+        stage('Create Recipe') {
+
+            steps {
+
+                sh """
+                    aws imagebuilder create-image-recipe \
+                    --name ${RECIPE_NAME} \
+                    --semantic-version ${VERSION} \
+                    --components componentArn=${COMPONENT_ARN} \
+                    --parent-image ${PARENT_IMAGE} \
+                    --block-device-mappings '[{"deviceName":"/dev/xvda","ebs":{"volumeSize":20}}]' \
+                    --region ${REGION}
+                """
+            }
+        }
+
+        // =====================================================
+        // Fetch Recipe ARN
+        // =====================================================
+
+        stage('Fetch Recipe ARN') {
+
+            steps {
+
+                script {
+
+                    env.RECIPE_ARN = sh(
+
+                        script: """
+                            aws imagebuilder list-image-recipes \
+                            --region ${REGION} \
+                            --query "imageRecipeSummaryList[?name=='${RECIPE_NAME}'] | [-1].arn" \
+                            --output text
+                        """,
+
+                        returnStdout: true
+
+                    ).trim()
+
+                    echo "Recipe ARN: ${env.RECIPE_ARN}"
+                }
+            }
+        }
+
+        // =====================================================
+        // Update Existing Pipeline
+        // =====================================================
+
+        stage('Update Pipeline') {
+
+            steps {
+
+                sh """
+                    aws imagebuilder update-image-pipeline \
+                    --image-pipeline-arn ${PIPELINE_ARN} \
+                    --image-recipe-arn ${RECIPE_ARN} \
+                    --infrastructure-configuration-arn ${INFRA_ARN} \
+                    --region ${REGION}
+                """
+            }
+        }
+
+        // =====================================================
+        // Start AMI Build
+        // =====================================================
+
+        stage('Start AMI Build') {
+
+            steps {
+
+                sh """
+                    aws imagebuilder start-image-pipeline-execution \
+                    --image-pipeline-arn ${PIPELINE_ARN} \
+                    --region ${REGION}
+                """
+            }
+        }
     }
 
-    // ==========================================
-    // Test AWS Credentials
-    // ==========================================
-    stage('Test AWS Access') {
+    post {
 
-      when {
-        expression { env.BUILD_AMI == "true" }
-      }
+        success {
 
-      steps {
+            echo "Golden AMI build triggered successfully."
+        }
 
-        sh 'aws sts get-caller-identity'
-      }
+        failure {
+
+            echo "Pipeline failed."
+        }
     }
-
-    // ==========================================
-    // Trigger Image Builder
-    // ==========================================
-    stage('Build Golden AMI') {
-
-      when {
-        expression { env.BUILD_AMI == "true" }
-      }
-
-      steps {
-
-        sh 'chmod +x scripts/build_ami.sh'
-
-        sh './scripts/build_ami.sh'
-      }
-    }
-
-    // ==========================================
-    // Show Latest AMI
-    // ==========================================
-    stage('Print Latest AMI ID') {
-
-      when {
-        expression { env.BUILD_AMI == "true" }
-      }
-
-      steps {
-
-        sh 'cat output/ami.txt'
-      }
-    }
-  }
 }
