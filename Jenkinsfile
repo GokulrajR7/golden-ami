@@ -20,7 +20,7 @@ pipeline {
 
         INFRA_ARN = "arn:aws:imagebuilder:ap-south-1:272916400173:infrastructure-configuration/onestrata-prereq-infra"
 
-        PARENT_IMAGE = "arn:aws:imagebuilder:ap-south-1:aws:image/amazon-linux-2023-arm64/2023.10.16"
+        PARENT_IMAGE = "arn:aws:imagebuilder:ap-south-1:aws:image/amazon-linux-2023-x86/2023.12.15"
     }
 
     stages {
