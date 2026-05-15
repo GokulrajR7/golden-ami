@@ -66,7 +66,7 @@ pipeline {
                     --name ${COMPONENT_NAME} \
                     --semantic-version ${VERSION} \
                     --platform Linux \
-                    --data file://imagebuilder/component/jenkins-al2023-component.yaml \
+                    --data file://imagebuilder/components/jenkins-al2023-component.yaml \
                     --region ${REGION}
                 """
             }
