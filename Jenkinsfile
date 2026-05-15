@@ -14,7 +14,7 @@ pipeline {
 
         VERSION = "1.0.${BUILD_NUMBER}"
 
-        SCRIPT_BUCKET = "golden-ami-scripts"
+        SCRIPT_BUCKET = "golden-ami-scripts-gokul"
 
         PIPELINE_ARN = "arn:aws:imagebuilder:ap-south-1:272916400173:image-pipeline/testing-pipeline"
 
