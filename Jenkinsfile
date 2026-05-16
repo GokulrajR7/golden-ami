@@ -4,6 +4,11 @@ pipeline {
         label 'gami2023'
     }
 
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
     environment {
 
         REGION = "ap-south-1"
@@ -32,7 +37,56 @@ pipeline {
         stage('Checkout') {
 
             steps {
+
+                echo "Checking out source code..."
+
                 checkout scm
+
+                sh '''
+                    echo "Workspace:"
+                    pwd
+
+                    echo "Repository Structure:"
+                    find . -type f
+                '''
+            }
+        }
+
+        // =====================================================
+        // Validate AWS Access
+        // =====================================================
+
+        stage('Validate AWS') {
+
+            steps {
+
+                sh '''
+                    set -e
+
+                    echo "Validating AWS Access..."
+
+                    aws sts get-caller-identity
+                '''
+            }
+        }
+
+        // =====================================================
+        // Validate Required Files
+        // =====================================================
+
+        stage('Validate Files') {
+
+            steps {
+
+                sh '''
+                    set -e
+
+                    test -f imagebuilder/scripts/install.sh
+
+                    test -f imagebuilder/components/jenkins-al2023-component.yaml
+
+                    echo "All required files exist."
+                '''
             }
         }
 
@@ -44,12 +98,18 @@ pipeline {
 
             steps {
 
-                sh """
+                sh '''
+                    set -e
+
+                    chmod +x imagebuilder/scripts/install.sh
+
+                    echo "Uploading install.sh to S3..."
+
                     aws s3 cp \
                     imagebuilder/scripts/install.sh \
                     s3://${SCRIPT_BUCKET}/install.sh \
                     --region ${REGION}
-                """
+                '''
             }
         }
 
@@ -61,14 +121,18 @@ pipeline {
 
             steps {
 
-                sh """
+                sh '''
+                    set -e
+
+                    echo "Creating Image Builder Component..."
+
                     aws imagebuilder create-component \
                     --name ${COMPONENT_NAME} \
                     --semantic-version ${VERSION} \
                     --platform Linux \
                     --data file://imagebuilder/components/jenkins-al2023-component.yaml \
                     --region ${REGION}
-                """
+                '''
             }
         }
 
@@ -88,7 +152,7 @@ pipeline {
                             aws imagebuilder list-components \
                             --owner Self \
                             --region ${REGION} \
-                            --query "componentVersionList[?name=='${COMPONENT_NAME}'] | [-1].arn" \
+                            --query "sort_by(componentVersionList,&dateCreated)[-1].arn" \
                             --output text
                         """,
 
@@ -96,20 +160,25 @@ pipeline {
 
                     ).trim()
 
-                    echo "Component ARN: ${env.COMPONENT_ARN}"
+                    echo "Latest Component ARN:"
+                    echo "${env.COMPONENT_ARN}"
                 }
             }
         }
 
         // =====================================================
-        // Create Recipe
+        // Create Image Recipe
         // =====================================================
 
         stage('Create Recipe') {
 
             steps {
 
-                sh """
+                sh '''
+                    set -e
+
+                    echo "Creating Image Recipe..."
+
                     aws imagebuilder create-image-recipe \
                     --name ${RECIPE_NAME} \
                     --semantic-version ${VERSION} \
@@ -117,7 +186,7 @@ pipeline {
                     --parent-image ${PARENT_IMAGE} \
                     --block-device-mappings '[{"deviceName":"/dev/xvda","ebs":{"volumeSize":20}}]' \
                     --region ${REGION}
-                """
+                '''
             }
         }
 
@@ -136,7 +205,7 @@ pipeline {
                         script: """
                             aws imagebuilder list-image-recipes \
                             --region ${REGION} \
-                            --query "imageRecipeSummaryList[?name=='${RECIPE_NAME}'] | [-1].arn" \
+                            --query "sort_by(imageRecipeSummaryList,&dateCreated)[-1].arn" \
                             --output text
                         """,
 
@@ -144,7 +213,8 @@ pipeline {
 
                     ).trim()
 
-                    echo "Recipe ARN: ${env.RECIPE_ARN}"
+                    echo "Latest Recipe ARN:"
+                    echo "${env.RECIPE_ARN}"
                 }
             }
         }
@@ -157,13 +227,17 @@ pipeline {
 
             steps {
 
-                sh """
+                sh '''
+                    set -e
+
+                    echo "Updating Image Pipeline..."
+
                     aws imagebuilder update-image-pipeline \
                     --image-pipeline-arn ${PIPELINE_ARN} \
                     --image-recipe-arn ${RECIPE_ARN} \
                     --infrastructure-configuration-arn ${INFRA_ARN} \
                     --region ${REGION}
-                """
+                '''
             }
         }
 
@@ -175,14 +249,22 @@ pipeline {
 
             steps {
 
-                sh """
+                sh '''
+                    set -e
+
+                    echo "Starting AMI Build..."
+
                     aws imagebuilder start-image-pipeline-execution \
                     --image-pipeline-arn ${PIPELINE_ARN} \
                     --region ${REGION}
-                """
+                '''
             }
         }
     }
+
+    // =====================================================
+    // Post Actions
+    // =====================================================
 
     post {
 
@@ -194,6 +276,11 @@ pipeline {
         failure {
 
             echo "Pipeline failed."
+        }
+
+        always {
+
+            echo "Pipeline execution completed."
         }
     }
 }
