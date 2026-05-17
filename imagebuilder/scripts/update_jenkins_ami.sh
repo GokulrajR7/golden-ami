@@ -24,46 +24,35 @@ import hudson.plugins.ec2.*
 
 def latestAmi = "${AMI_ID}"
 
-def jenkins = Jenkins.instance
+def instance = Jenkins.instance
 
-jenkins.clouds.each { cloud ->
+def cloud = instance.clouds.getByName("gami2023")
 
-    if (cloud instanceof AmazonEC2Cloud) {
+if (cloud == null) {
 
-        def newTemplates = []
+    println("Cloud not found")
+    return
+}
 
-        cloud.templates.each { template ->
+println("Latest AMI: ${latestAmi}")
 
-            println("Template Labels: " + template.labelString)
+cloud.templates.each { template ->
 
-            if (template.labelString.contains("gami2023")) {
+    if (template.description == "goldenami") {
 
-                println("Updating Template: " + template.description)
+        println("Updating template AMI...")
 
-                println("Old AMI: " + template.ami)
+        println("Old AMI: ${template.ami}")
 
-                def newTemplate = template.clone()
+        template.ami = latestAmi
 
-                newTemplate.ami = latestAmi
-
-                println("Updated AMI: " + newTemplate.ami)
-
-                newTemplates.add(newTemplate)
-
-            } else {
-
-                newTemplates.add(template)
-            }
-        }
-
-        cloud.templates.clear()
-        cloud.templates.addAll(newTemplates)
+        println("Updated AMI to: ${latestAmi}")
     }
 }
 
-jenkins.save()
+instance.save()
 
-println("Jenkins cloud AMI updated successfully.")
+println("Jenkins cloud configuration saved")
 
 EOF
 
