@@ -12,7 +12,7 @@ echo "Fetching Jenkins crumb..."
 CRUMB=$(curl -s \
   --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
   "${JENKINS_URL}/crumbIssuer/api/json" \
-  | jq -r '.crumbRequestField + ":" + .crumb')
+  | jq -r '.crumb')
 
 echo "Crumb fetched successfully."
 
@@ -57,7 +57,7 @@ echo "Updating Jenkins cloud AMI..."
 
 curl -s -X POST \
   --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
-  -H "${CRUMB}" \
+  -H "Jenkins-Crumb:${CRUMB}" \
   --data-urlencode "script=$(cat update_ami.groovy)" \
   "${JENKINS_URL}/scriptText"
 
