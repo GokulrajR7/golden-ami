@@ -331,7 +331,7 @@ pipeline {
             steps {
 
                 withCredentials([usernamePassword(
-                    credentialsId: 'jenkins-api-creds',
+                    credentialsId: 'jenkins-api-creds-gokul',
                     usernameVariable: 'JENKINS_USER',
                     passwordVariable: 'JENKINS_TOKEN'
                 )]) {
