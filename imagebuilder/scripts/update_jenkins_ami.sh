@@ -7,9 +7,14 @@ JENKINS_URL=$2
 JENKINS_USER=$3
 JENKINS_TOKEN=$4
 
+echo "Fetching Jenkins crumb..."
+
 CRUMB=$(curl -s \
-    --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
-    "${JENKINS_URL}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")
+  --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+  "${JENKINS_URL}/crumbIssuer/api/json" \
+  | jq -r '.crumbRequestField + ":" + .crumb')
+
+echo "Crumb fetched successfully."
 
 cat > update_ami.groovy <<EOF
 
@@ -48,8 +53,12 @@ println("Jenkins cloud AMI updated successfully.")
 
 EOF
 
+echo "Updating Jenkins cloud AMI..."
+
 curl -s -X POST \
   --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
   -H "${CRUMB}" \
   --data-urlencode "script=$(cat update_ami.groovy)" \
-  ${JENKINS_URL}/scriptText
+  "${JENKINS_URL}/scriptText"
+
+echo "AMI update request completed."
