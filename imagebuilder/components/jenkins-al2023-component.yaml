@@ -3,6 +3,7 @@ description: Install Jenkins on Amazon Linux 2023
 schemaVersion: 1.0
 
 phases:
+
   - name: build
     steps:
 
@@ -10,7 +11,7 @@ phases:
         action: ExecuteBash
         inputs:
           commands:
-            - aws s3 cp s3://golden-ami-scripts/install.sh /tmp/install.sh
+            - aws s3 cp s3://golden-ami-scripts-gokul/install.sh /tmp/install.sh
             - chmod +x /tmp/install.sh
 
       - name: RunInstallScript
@@ -22,9 +23,10 @@ phases:
   - name: validate
     steps:
 
-      - name: VerifyJenkins
+      - name: VerifyTools
         action: ExecuteBash
         inputs:
           commands:
             - java -version
-            - systemctl status jenkins --no-pager
+            - docker --version
+            - git --version
