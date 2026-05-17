@@ -9,10 +9,11 @@ JENKINS_TOKEN=$4
 
 echo "Fetching Jenkins crumb..."
 
-CRUMB=$(curl -s \
+curl -s -c cookies.txt \
   --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
-  "${JENKINS_URL}/crumbIssuer/api/json" \
-  | jq -r '.crumb')
+  "${JENKINS_URL}/crumbIssuer/api/json" > crumb.json
+
+CRUMB=$(jq -r '.crumb' crumb.json)
 
 echo "Crumb fetched successfully."
 
@@ -55,8 +56,10 @@ EOF
 
 echo "Updating Jenkins cloud AMI..."
 
-curl -s -X POST \
+curl -s -L -X POST \
   --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+  --cookie cookies.txt \
+  --cookie-jar cookies.txt \
   -H "Jenkins-Crumb:${CRUMB}" \
   --data-urlencode "script=$(cat update_ami.groovy)" \
   "${JENKINS_URL}/scriptText"
