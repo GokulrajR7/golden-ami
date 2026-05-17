@@ -85,6 +85,12 @@ pipeline {
 
                     test -f imagebuilder/components/jenkins-al2023-component.yaml
 
+                    test -f imagebuilder/scripts/wait_for_ami.sh
+
+                    test -f imagebuilder/scripts/fetch_ami.sh
+
+                    test -f imagebuilder/scripts/update_jenkins_ami.sh
+
                     echo "All required files exist."
                 '''
             }
@@ -239,15 +245,107 @@ pipeline {
 
             steps {
 
+                script {
+
+                    env.IMAGE_BUILD_VERSION_ARN = sh(
+
+                        script: """
+                            aws imagebuilder start-image-pipeline-execution \
+                            --image-pipeline-arn ${PIPELINE_ARN} \
+                            --region ${REGION} \
+                            --query 'imageBuildVersionArn' \
+                            --output text
+                        """,
+
+                        returnStdout: true
+
+                    ).trim()
+
+                    echo "Started Image Build:"
+                    echo "${env.IMAGE_BUILD_VERSION_ARN}"
+                }
+            }
+        }
+
+        // =====================================================
+        // Wait For AMI
+        // =====================================================
+
+        stage('Wait For AMI') {
+
+            steps {
+
                 sh '''
-                    set -e
+                    chmod +x imagebuilder/scripts/wait_for_ami.sh
 
-                    echo "Starting AMI Build..."
-
-                    aws imagebuilder start-image-pipeline-execution \
-                    --image-pipeline-arn ${PIPELINE_ARN} \
-                    --region ${REGION}
+                    imagebuilder/scripts/wait_for_ami.sh \
+                    ${IMAGE_BUILD_VERSION_ARN} \
+                    ${REGION}
                 '''
+            }
+        }
+
+        // =====================================================
+        // Fetch Latest AMI
+        // =====================================================
+
+        stage('Fetch Latest AMI') {
+
+            steps {
+
+                sh '''
+                    chmod +x imagebuilder/scripts/fetch_ami.sh
+
+                    imagebuilder/scripts/fetch_ami.sh \
+                    ${IMAGE_BUILD_VERSION_ARN} \
+                    ${REGION}
+
+                    cat output/latest_ami.txt
+                '''
+
+                script {
+
+                    env.LATEST_AMI_ID = sh(
+                        script: 'cat output/latest_ami.txt',
+                        returnStdout: true
+                    ).trim()
+
+                    echo "================================="
+                    echo "LATEST CREATED AMI:"
+                    echo "${env.LATEST_AMI_ID}"
+                    echo "================================="
+                }
+            }
+        }
+
+        // =====================================================
+        // Update Jenkins Cloud AMI
+        // =====================================================
+
+        stage('Update Jenkins Cloud AMI') {
+
+            agent {
+                label 'built-in'
+            }
+
+            steps {
+
+                withCredentials([usernamePassword(
+                    credentialsId: 'jenkins-api-creds',
+                    usernameVariable: 'JENKINS_USER',
+                    passwordVariable: 'JENKINS_TOKEN'
+                )]) {
+
+                    sh '''
+                        chmod +x imagebuilder/scripts/update_jenkins_ami.sh
+
+                        imagebuilder/scripts/update_jenkins_ami.sh \
+                        ${LATEST_AMI_ID} \
+                        http://localhost:8080 \
+                        ${JENKINS_USER} \
+                        ${JENKINS_TOKEN}
+                    '''
+                }
             }
         }
     }
@@ -260,7 +358,7 @@ pipeline {
 
         success {
 
-            echo "Golden AMI build triggered successfully."
+            echo "Golden AMI pipeline completed successfully."
         }
 
         failure {
@@ -269,6 +367,11 @@ pipeline {
         }
 
         always {
+
+            archiveArtifacts(
+                artifacts: 'output/**/*',
+                allowEmptyArchive: true
+            )
 
             echo "Pipeline execution completed."
         }
