@@ -30,6 +30,8 @@ jenkins.clouds.each { cloud ->
 
     if (cloud instanceof AmazonEC2Cloud) {
 
+        def newTemplates = []
+
         cloud.templates.each { template ->
 
             println("Template Labels: " + template.labelString)
@@ -40,11 +42,22 @@ jenkins.clouds.each { cloud ->
 
                 println("Old AMI: " + template.ami)
 
-                template.ami = latestAmi
+                def newTemplate = template.clone()
 
-                println("Updated AMI: " + template.ami)
+                newTemplate.ami = latestAmi
+
+                println("Updated AMI: " + newTemplate.ami)
+
+                newTemplates.add(newTemplate)
+
+            } else {
+
+                newTemplates.add(template)
             }
         }
+
+        cloud.templates.clear()
+        cloud.templates.addAll(newTemplates)
     }
 }
 
