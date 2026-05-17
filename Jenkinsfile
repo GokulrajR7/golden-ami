@@ -129,7 +129,6 @@ pipeline {
                     aws s3 cp \
                         "$SCRIPT_PATH" \
                         "s3://${SCRIPT_BUCKET}/install.sh" \
-                        --acl bucket-owner-full-control \
                         --region "${REGION}"
 
                     echo "Verifying uploaded file..."
