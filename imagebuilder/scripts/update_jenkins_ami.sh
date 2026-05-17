@@ -7,6 +7,10 @@ JENKINS_URL=$2
 JENKINS_USER=$3
 JENKINS_TOKEN=$4
 
+CRUMB=$(curl -s \
+    --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+    "${JENKINS_URL}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")
+
 cat > update_ami.groovy <<EOF
 
 import jenkins.model.*
@@ -46,5 +50,6 @@ EOF
 
 curl -s -X POST \
   --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+  -H "${CRUMB}" \
   --data-urlencode "script=$(cat update_ami.groovy)" \
   ${JENKINS_URL}/scriptText
