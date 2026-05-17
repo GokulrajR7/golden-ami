@@ -22,11 +22,16 @@ jenkins.clouds.each { cloud ->
 
         cloud.templates.each { template ->
 
-            println("Old AMI: " + template.ami)
+            if (template.labelString == "gami2023") {
 
-            template.ami = latestAmi
+                println("Updating Template: " + template.description)
 
-            println("Updated AMI: " + template.ami)
+                println("Old AMI: " + template.ami)
+
+                template.ami = latestAmi
+
+                println("Updated AMI: " + template.ami)
+            }
         }
     }
 }
