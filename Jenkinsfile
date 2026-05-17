@@ -101,14 +101,31 @@ pipeline {
                 sh '''
                     set -e
 
-                    chmod +x imagebuilder/scripts/install.sh
+                    echo "Current Workspace:"
+                    pwd
+
+                    echo "Listing imagebuilder/scripts directory:"
+                    ls -l imagebuilder/scripts/
+
+                    SCRIPT_PATH="${WORKSPACE}/imagebuilder/scripts/install.sh"
+
+                    echo "Validating script exists..."
+
+                    if [ ! -f "$SCRIPT_PATH" ]; then
+                        echo "ERROR: install.sh not found!"
+                        exit 1
+                    fi
+
+                    chmod +x "$SCRIPT_PATH"
 
                     echo "Uploading install.sh to S3..."
 
                     aws s3 cp \
-                    imagebuilder/scripts/install.sh \
-                    s3://${SCRIPT_BUCKET}/install.sh \
-                    --region ${REGION}
+                        "$SCRIPT_PATH" \
+                        "s3://${SCRIPT_BUCKET}/install.sh" \
+                        --region "${REGION}"
+
+                    echo "Upload completed successfully."
                 '''
             }
         }
