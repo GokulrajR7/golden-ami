@@ -118,10 +118,23 @@ pipeline {
 
                     chmod +x "$SCRIPT_PATH"
 
-                    echo "Uploading install.sh to S3..."
+                    echo "Removing old install.sh from S3 if exists..."
+
+                    aws s3 rm \
+                        "s3://${SCRIPT_BUCKET}/install.sh" \
+                        --region "${REGION}" || true
+
+                    echo "Uploading latest install.sh to S3..."
 
                     aws s3 cp \
                         "$SCRIPT_PATH" \
+                        "s3://${SCRIPT_BUCKET}/install.sh" \
+                        --acl bucket-owner-full-control \
+                        --region "${REGION}"
+
+                    echo "Verifying uploaded file..."
+
+                    aws s3 ls \
                         "s3://${SCRIPT_BUCKET}/install.sh" \
                         --region "${REGION}"
 
