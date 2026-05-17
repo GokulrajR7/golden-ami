@@ -121,38 +121,18 @@ pipeline {
 
             steps {
 
-                sh '''
-                    set -e
-
-                    echo "Creating Image Builder Component..."
-
-                    aws imagebuilder create-component \
-                    --name ${COMPONENT_NAME} \
-                    --semantic-version ${VERSION} \
-                    --platform Linux \
-                    --data file://imagebuilder/components/jenkins-al2023-component.yaml \
-                    --region ${REGION}
-                '''
-            }
-        }
-
-        // =====================================================
-        // Fetch Latest Component ARN
-        // =====================================================
-
-        stage('Fetch Component ARN') {
-
-            steps {
-
                 script {
 
                     env.COMPONENT_ARN = sh(
 
                         script: """
-                            aws imagebuilder list-components \
-                            --owner Self \
+                            aws imagebuilder create-component \
+                            --name ${COMPONENT_NAME} \
+                            --semantic-version ${VERSION} \
+                            --platform Linux \
+                            --data file://imagebuilder/components/jenkins-al2023-component.yaml \
                             --region ${REGION} \
-                            --query "sort_by(componentVersionList,&dateCreated)[-1].arn" \
+                            --query 'componentBuildVersionArn' \
                             --output text
                         """,
 
@@ -160,7 +140,7 @@ pipeline {
 
                     ).trim()
 
-                    echo "Latest Component ARN:"
+                    echo "Created Component ARN:"
                     echo "${env.COMPONENT_ARN}"
                 }
             }
@@ -174,38 +154,19 @@ pipeline {
 
             steps {
 
-                sh '''
-                    set -e
-
-                    echo "Creating Image Recipe..."
-
-                    aws imagebuilder create-image-recipe \
-                    --name ${RECIPE_NAME} \
-                    --semantic-version ${VERSION} \
-                    --components componentArn=${COMPONENT_ARN} \
-                    --parent-image ${PARENT_IMAGE} \
-                    --block-device-mappings '[{"deviceName":"/dev/xvda","ebs":{"volumeSize":20}}]' \
-                    --region ${REGION}
-                '''
-            }
-        }
-
-        // =====================================================
-        // Fetch Recipe ARN
-        // =====================================================
-
-        stage('Fetch Recipe ARN') {
-
-            steps {
-
                 script {
 
                     env.RECIPE_ARN = sh(
 
                         script: """
-                            aws imagebuilder list-image-recipes \
+                            aws imagebuilder create-image-recipe \
+                            --name ${RECIPE_NAME} \
+                            --semantic-version ${VERSION} \
+                            --components componentArn=${COMPONENT_ARN} \
+                            --parent-image ${PARENT_IMAGE} \
+                            --block-device-mappings '[{"deviceName":"/dev/xvda","ebs":{"volumeSize":20}}]' \
                             --region ${REGION} \
-                            --query "sort_by(imageRecipeSummaryList,&dateCreated)[-1].arn" \
+                            --query 'imageRecipeArn' \
                             --output text
                         """,
 
@@ -213,7 +174,7 @@ pipeline {
 
                     ).trim()
 
-                    echo "Latest Recipe ARN:"
+                    echo "Created Recipe ARN:"
                     echo "${env.RECIPE_ARN}"
                 }
             }
