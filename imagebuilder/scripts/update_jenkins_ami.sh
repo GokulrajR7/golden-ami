@@ -22,7 +22,9 @@ jenkins.clouds.each { cloud ->
 
         cloud.templates.each { template ->
 
-            if (template.labelString == "gami2023") {
+            println("Template Labels: " + template.labelString)
+
+            if (template.labelString.contains("gami2023")) {
 
                 println("Updating Template: " + template.description)
 
@@ -42,7 +44,7 @@ println("Jenkins cloud AMI updated successfully.")
 
 EOF
 
-curl -X POST \
+curl -s -X POST \
   --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
   --data-urlencode "script=$(cat update_ami.groovy)" \
   ${JENKINS_URL}/scriptText
