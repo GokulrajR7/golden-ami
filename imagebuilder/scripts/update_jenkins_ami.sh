@@ -7,6 +7,8 @@ JENKINS_URL=$2
 JENKINS_USER=$3
 JENKINS_TOKEN=$4
 
+export AMI_ID
+
 echo "Fetching Jenkins crumb..."
 
 curl -s -c cookies.txt \
@@ -17,12 +19,12 @@ CRUMB=$(jq -r '.crumb' crumb.json)
 
 echo "Crumb fetched successfully."
 
-cat > update_ami.groovy <<EOF
+cat > update_ami.groovy <<'EOF'
 
 import jenkins.model.*
 import hudson.plugins.ec2.*
 
-def latestAmi = "${AMI_ID}"
+def latestAmi = System.getenv("AMI_ID")
 
 def instance = Jenkins.instance
 
@@ -34,7 +36,7 @@ if (cloud == null) {
     return
 }
 
-println("Latest AMI: ${latestAmi}")
+println("Latest AMI: " + latestAmi)
 
 cloud.templates.each { template ->
 
@@ -42,11 +44,11 @@ cloud.templates.each { template ->
 
         println("Updating template AMI...")
 
-        println("Old AMI: ${template.ami}")
+        println("Old AMI: " + template.ami)
 
         template.ami = latestAmi
 
-        println("Updated AMI to: ${latestAmi}")
+        println("Updated AMI to: " + latestAmi)
     }
 }
 
