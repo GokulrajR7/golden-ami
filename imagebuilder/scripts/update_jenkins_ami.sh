@@ -7,8 +7,6 @@ JENKINS_URL=$2
 JENKINS_USER=$3
 JENKINS_TOKEN=$4
 
-export AMI_ID
-
 echo "Fetching Jenkins crumb..."
 
 curl -s -c cookies.txt \
@@ -19,12 +17,12 @@ CRUMB=$(jq -r '.crumb' crumb.json)
 
 echo "Crumb fetched successfully."
 
-cat > update_ami.groovy <<'EOF'
+cat > update_ami.groovy <<EOF
 
 import jenkins.model.*
 import hudson.plugins.ec2.*
 
-def latestAmi = System.getenv("AMI_ID")
+def latestAmi = "${AMI_ID}"
 
 def instance = Jenkins.instance
 
