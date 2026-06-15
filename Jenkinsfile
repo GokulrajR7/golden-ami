@@ -1,7 +1,7 @@
 pipeline {
 
     agent {
-        label 'gami2023'
+        label 'windows-agent'
     }
 
     options {
